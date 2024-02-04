@@ -32,7 +32,8 @@ help - Bot information
 * https://pc.net/tips/2022-02/remove_tracking_parameters
 * https://www.reddit.com/r/TelegramBots/comments/q8oinc/a_bot_to_remove_tracking_url_of_a_link/
 
-## Links regarding new ideas:
+## Links regarding new ideas (also for other projects):
 * https://github.com/svenjacobs/leon/discussions/158
 * https://github.com/svenjacobs/leon/discussions/315
 * https://github.com/svenjacobs/leon/issues/136
+* https://github.com/svenjacobs/leon/issues/358
