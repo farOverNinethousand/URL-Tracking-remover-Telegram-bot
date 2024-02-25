@@ -1,1 +1,2 @@
 pthon-telegram-bot==20.1
+pydantic~=1.10.6

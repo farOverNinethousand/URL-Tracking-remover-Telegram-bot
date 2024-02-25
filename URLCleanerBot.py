@@ -3,6 +3,8 @@ import json
 import pydantic
 from telegram import Update, User
 from telegram.ext import CommandHandler, CallbackContext, Application, filters, MessageHandler
+import logging
+
 
 from URLCleaner import URLCleaner
 
@@ -17,6 +19,7 @@ def loadConfig() -> Config:
         jsondict = json.load(infile)
         return Config(**jsondict)
 
+
 # TODO: Move translation int external (json) files
 langDE = dict(
     command_start_bot_info="Dieser Bot entfernt Trackingparameter von URLs.\nZusätzlich werden auch MyDealz Tracking-URLs abgeändert:\nBeispiel:\nmydealz.de/share-deal-from-app/2117879\n->Wird zu:\nmydealz.de/diskussion/a-2117879\nSende einen oder mehrere Links an diesen Bot und erhalte Links ohne Tracking.\nDieser Bot speichert keinerlei Daten.\nSource code and support: TODO",
@@ -26,7 +29,7 @@ langDE = dict(
     text_cleaned_urls_success_snippet_applied_rules="Angewendete Regeln: {0}",
     text_cleaned_urls_success_removed_parameters="Entfernte Parameter: {0}",
     text_none="Keine",
-    text_url_is_already_clean_questionmark="URL was already clean?"
+    text_url_is_already_clean_questionmark="URL ist already clean?"
 )
 
 langEN = dict(
@@ -37,7 +40,7 @@ langEN = dict(
     text_cleaned_urls_success_snippet_applied_rules="Applied rules: {0}",
     text_cleaned_urls_success_removed_parameters="Removed parameters: {0}",
     text_none="None",
-    text_url_is_already_clean_questionmark="URL war bereits clean?"
+    text_url_is_already_clean_questionmark="URL ist bereits clean?"
 )
 
 allLangsDict = dict(
@@ -49,7 +52,11 @@ allLangsDict = dict(
 def translate(key: str, lang: str) -> str:
     """ Returns translated text """
     langdict = allLangsDict.get(lang, "en")
-    return langdict.get(key, key)
+    resultText = langdict.get(key, key)
+    if resultText is None:
+        logging.warning(f"Failed to find any translation for key {key}")
+        resultText = key
+    return resultText
 
 
 class URLCleanerBot:
@@ -58,13 +65,6 @@ class URLCleanerBot:
         self.application = Application.builder().token(self.cfg.bot_token).read_timeout(30).write_timeout(30).build()
         self.initHandlers()
         self.urlcleaner = URLCleaner()
-        # mainTranslationDir = "locales"
-        # languages = ["de", "en"]
-        # for language in languages:
-        #     translationPath = os.path.join(mainTranslationDir, language, "LC_MESSAGES")
-        #     # os.mkdir(translationPath)
-        #     if not os.path.isdir(translationPath):
-        #         os.makedirs(translationPath)
 
     def initHandlers(self):
         """ Adds all handlers to dispatcher (not error_handlers!!) """
@@ -90,7 +90,7 @@ class URLCleanerBot:
 
         position = 1
         for cleanedurl in cleanedurls:
-            newlink = cleanedurl.parsedURL.geturl()
+            newlink = cleanedurl.cleanedurl.geturl()
             if len(cleanedurls) > 1:
                 text += f"\n<b>URL {position}</b>"
             text += f"\nCode:\n<pre>{newlink}</pre>"
