@@ -23,9 +23,11 @@ help - Bot information
 
 ## Similar projects:
 * https://github.com/svenjacobs/leon **⭐My personal favorite!⭐**
+* https://github.com/ClearURLs/Addon **⭐My personal 2nd favorite!⭐**
 * https://github.com/inframanufaktur/clean-urls
 * https://github.com/newhouse/url-tracking-stripper
 * https://github.com/doggy8088/TrackingTokenStripper
+* https://github.com/agneevX/url-cleaner-bot
 
 
 ## Links:
