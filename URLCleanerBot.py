@@ -25,7 +25,7 @@ def loadConfig() -> Config:
 langDE = dict(
     command_start_bot_info="Dieser Bot entfernt Trackingparameter von URLs.\nZusätzlich werden auch MyDealz Tracking-URLs abgeändert:\nBeispiel:\nmydealz.de/share-deal-from-app/2117879\n->Wird zu:\nmydealz.de/diskussion/a-2117879\nSende einen oder mehrere Links an diesen Bot und erhalte Links ohne Tracking.\nDieser Bot speichert keinerlei Daten.\nSource code and support: TODO",
     text_cleaned_urls_fail="❌Keine Links gefunden.",
-    text_cleaned_urls_success="✅Detected {numlinks:.0f} URL(s):",
+    text_cleaned_urls_success="✅{numlinks:.0f} URL(s) gefunden:",
     text_cleaned_urls_success_snippet_clickable_link="Klickbarer Link:\n{0}",
     text_cleaned_urls_success_snippet_applied_rules="Angewendete Regeln: {0}",
     text_cleaned_urls_success_removed_parameters="Entfernte Parameter: {0}",
@@ -36,7 +36,7 @@ langDE = dict(
 langEN = dict(
     command_start_bot_info="This bot is removing tracking-parameters from URLs.\nExample:\nyoutu.be/YAKTL0MEK34?si=8dgziuhv57GFfgs4Y0u_\n->Gets changed to:\nyoutu.be/YAKTL0MEK34\nSend one or multiple URLs to this bot.\nThis bot does not store any user-data.\nQuellcode und Support: TODO",
     text_cleaned_urls_fail="❌Failed to find any links.",
-    text_cleaned_urls_success="✅{numlinks:.0f} URL(s) gefunden:",
+    text_cleaned_urls_success="✅Detected {numlinks:.0f} URL(s):",
     text_cleaned_urls_success_snippet_clickable_link="Clickable link:\n{0}",
     text_cleaned_urls_success_snippet_applied_rules="Applied rules: {0}",
     text_cleaned_urls_success_removed_parameters="Removed parameters: {0}",
