@@ -30,7 +30,7 @@ langDE = dict(
     text_cleaned_urls_success_snippet_applied_rules="Angewendete Regeln: {0}",
     text_cleaned_urls_success_removed_parameters="Entfernte Parameter: {0}",
     text_none="Keine",
-    text_url_is_already_clean_questionmark="URL ist already clean?"
+    text_url_is_already_clean_questionmark="URL ist bereits sauber?"
 )
 
 langEN = dict(
@@ -41,7 +41,7 @@ langEN = dict(
     text_cleaned_urls_success_snippet_applied_rules="Applied rules: {0}",
     text_cleaned_urls_success_removed_parameters="Removed parameters: {0}",
     text_none="None",
-    text_url_is_already_clean_questionmark="URL ist bereits clean?"
+    text_url_is_already_clean_questionmark="URL is already clean?"
 )
 
 allLangsDict = dict(

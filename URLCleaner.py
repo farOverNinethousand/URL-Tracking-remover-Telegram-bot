@@ -233,7 +233,7 @@ class URLCleaner:
                     cleanedurl.removedparams_affiliate += param_affiliate
         if len(removeParams) > 0:
             for removeParam in removeParams:
-                if cleanedurl.query.pop(removeParam) is not None:
+                if cleanedurl.query.pop(removeParam, None) is not None:
                     removedParams.append(removeParam)
             cleanedurl.removedparams_tracking += removedParams
         # Replace query inside URL as we've changed the query
