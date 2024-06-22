@@ -9,7 +9,7 @@ The library which removes the tracking parameters can be used independently from
 ```
 This bot removes tracking parameters from URLs.
 Source code and support: TODO
-Similar project in Android: github.com/svenjacobs/leon
+Similar project for Android: github.com/svenjacobs/leon
 ```
 
 **Bot commands text:**
@@ -20,6 +20,7 @@ help - Bot information
 
 # TODOs
 * Add all sanitizers of project "Leon": https://github.com/svenjacobs/leon/tree/main/core-domain/src/main/kotlin/com/svenjacobs/app/leon/core/domain/sanitizer
+* Add full support for all rules of project "ClearURLs": https://github.com/ClearURLs/Addon | https://docs.clearurls.xyz/1.26.1/specs/rules/
 
 ## Similar projects:
 * https://github.com/svenjacobs/leon **⭐My personal favorite!⭐**

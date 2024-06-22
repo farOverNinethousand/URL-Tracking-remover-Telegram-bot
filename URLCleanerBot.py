@@ -1,4 +1,5 @@
 import json
+import os.path
 
 import pydantic
 from telegram import Update, User
@@ -65,6 +66,8 @@ class URLCleanerBot:
         self.application = Application.builder().token(self.cfg.bot_token).read_timeout(30).write_timeout(30).build()
         self.initHandlers()
         self.urlcleaner = URLCleaner()
+        if os.path.exists("data.minify.json"):
+            self.urlcleaner.importCleaningRules(path="data.minify.json")
 
     def initHandlers(self):
         """ Adds all handlers to dispatcher (not error_handlers!!) """
@@ -81,7 +84,8 @@ class URLCleanerBot:
     async def botCleanURLs(self, update: Update, context: CallbackContext):
         userInput = update.message.text
         user = update.effective_user
-        cleanedurls = self.urlcleaner.getCleanedURLs(userInput)
+        cleanresult = self.urlcleaner.cleanText(text=userInput)
+        cleanedurls = cleanresult.cleanedurls
         if len(cleanedurls) == 0:
             return await self.application.updater.bot.send_message(chat_id=user.id, text=self.translate("text_cleaned_urls_fail", user), parse_mode="HTML",
                                                                    disable_web_page_preview=True)

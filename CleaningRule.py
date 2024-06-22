@@ -9,28 +9,39 @@ class CleaningRule(BaseModel):
     Arguments:
 
     name: Name of the rule
+    description of rule: Can be used to provide examples on what this does but also to explain why it is done in a certain way.
+    urlPattern: Pattern of the URL if pattern matching is preferred.
     paramsblacklist: List of parameters to be removed from URL
+    paramsblacklist_affiliate: List of affiliate related parameters to be removed from URL
     removeAllParameters: If set to true, all parameters will be removed from the source-URL
-    domainwhitelist: Whitelist of domains this rule should act upon. None = rule will be applied to all URLs.
+    domainwhitelist: Whitelist of domains this rule should act upon. None = rule will be applied to all URLs which match the rules' pattern.
     stopAfterThisRule: Set this to True if this rule is allowed to break the URL-cleaning-loop if applied successfully.
     domainwhitelistIgnoreWWW: Ignore 'www.' in whitelist domain matching
 
+    exceptionsregexlist: List of regular expressions for URL patterns where
     rewriteURLSourcePattern: Regular expression to be used as source for building a new URL e.g. https://mydealz.de/share-deal-from-app/(\d+)
     rewriteURLScheme: Scheme to be used to URL-rewriting e.g. https://mydealz.de/deals/x-<regexmatch:1>
+    forceRedirection: Not used at this moment, stolen/imported from ClearURLs project, see: https://docs.clearurls.xyz/1.26.1/specs/rules/#forceredirection
     testurls: URLs for testing this rule
 
 
     Returns None.
      """
     name: str
+    description: Optional[str]
+    urlPattern: Optional[str]
     paramsblacklist: Optional[List[str]]
+    paramsblacklist_affiliate: Optional[List[str]]
     paramswhitelist: Optional[List[str]]
     domainwhitelist: Optional[List[str]] = []
     domainwhitelistIgnoreWWW: Optional[bool] = True
+    exceptionsregexlist: Optional[List[str]] = []
+    redirectsregexlist: Optional[List[str]] = []
     removeAllParameters: Optional[bool] = False
-    forceStopAfterThisRule: Optional[bool] = False
+    stopAfterThisRule: Optional[bool] = True
     rewriteURLSourcePattern: Optional[Union[str, re.Pattern, None]]
     rewriteURLScheme: Optional[str]
+    forceRedirection: Optional[bool]
     testurls: Optional[List[str]]
 
     @validator("domainwhitelist")
@@ -57,7 +68,9 @@ class CleaningRule(BaseModel):
         paramswhitelist = values.get('paramswhitelist')
         rewriteURLSourcePattern = values.get('rewriteURLSourcePattern')
         rewriteURLScheme = values.get('rewriteURLScheme')
-        if paramsblacklist is None and removeAllParameters is False and paramswhitelist is None and rewriteURLSourcePattern is None and rewriteURLScheme is None:
+        urlPattern = values.get('urlPattern')
+        redirectsregexlist = values.get('redirectsregexlist')
+        if paramsblacklist is None and removeAllParameters is False and paramswhitelist is None and rewriteURLSourcePattern is None and rewriteURLScheme is None and urlPattern is None and redirectsregexlist is None:
             raise ValueError(f"Minumum parameters are not given | {paramsblacklist=} {removeAllParameters=} {rewriteURLSourcePattern=} {rewriteURLScheme=}")
         elif rewriteURLSourcePattern is None and rewriteURLScheme is not None:
             raise ValueError(f"{rewriteURLSourcePattern=} while rewriteURLScheme is not None")

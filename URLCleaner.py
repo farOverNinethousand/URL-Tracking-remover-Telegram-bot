@@ -1,9 +1,10 @@
 import json
+import os.path
 import random
 import re
 import string
-from typing import List
-from urllib.parse import urlparse, parse_qs, urlencode
+from typing import List, Union
+from urllib.parse import urlparse, parse_qs, urlencode, unquote
 
 from pydantic.json import pydantic_encoder
 
@@ -18,10 +19,21 @@ class CleanedURL:
     def __init__(self, url: str):
         self.originalurl = url
         self.cleanedurl = urlparse(url)
+        self.newurl_regex = None
+        self.newurl = None
         self.query = parse_qs(self.cleanedurl.query, keep_blank_values=True)
         self.appliedrules = []
         self.removedparams_affiliate = []
         self.removedparams_tracking = []
+
+
+class CleanResult:
+    """ Represents the result of a text string which was cleaned. """
+
+    def __init__(self, text: str, cleanedtext: str, cleanedurls: List[CleanedURL]):
+        self.originaltext = text
+        self.cleanedtext = cleanedtext
+        self.cleanedurls = cleanedurls
 
 
 # Very cheap regex to find URLs inside a text
@@ -47,13 +59,69 @@ class URLCleaner:
         # TODO: Add functionality
         self.removeAffiliate = False
 
-    def loadCleaningRules(self, path: str):
+    def importCleaningRules(self, path: str) -> List[CleaningRule]:
         """ TODO: Add functionality
          Load rules from file and add them to global list of cleaning rules.
          """
-        pass
+        if not os.path.exists(path):
+            raise Exception(f"File does not exist: {path}")
+        newrules = []
+        with open(path, encoding='utf-8') as infile:
+            jsonobject = json.load(infile)
+            if isinstance(jsonobject, list):
+                # Assume this json is proprietary from this project
+                for item in jsonobject:
+                    rule = CleaningRule(**item)
+                    newrules.append(rule)
+            else:
+                # Check for other sources
+                providers: dict = jsonobject.get("providers")
+                if providers is not None:
+                    # rule json from ClearURLs addon: https://github.com/ClearURLs/Addon
+                    # TODO: Add parser for those rules
+                    for rulename, providermap in providers.items():
+                        # TODO: Add params RegEx support(?)
+                        paramlist = providermap.get("rules")
+                        # TODO
+                        completeProvider = providermap.get("completeProvider")
+                        redirections = providermap.get("redirections")
+                        rawRules = providermap.get("rawRules")
+                        exceptions = providermap.get("exceptions")
+                        forceRedirection = providermap.get("forceRedirection")
+                        referralMarketing = providermap.get("referralMarketing")
+                        newrule = CleaningRule(name=rulename, description="Rule imported from 'github.com/ClearURLs/Addon'"
+                                               , paramsblacklist=paramlist)
+                        newrule.urlPattern = providermap["urlPattern"]
+                        if exceptions is not None:
+                            newrule.exceptionsregexlist = exceptions
+                        if referralMarketing is not None:
+                            newrule.paramsblacklist_affiliate = referralMarketing
+                        if redirections is not None:
+                            newrule.redirectsregexlist = redirections
 
-    def getCleanedURLs(self, text: str) -> List[CleanedURL]:
+                        newrules.append(newrule)
+
+                else:
+                    raise Exception("Invalid import data")
+        print(f"New rules loaded: {len(newrules)}")
+        for rule in newrules:
+            if rule not in self.cleaningrules:
+                self.cleaningrules.append(rule)
+        return newrules
+
+    def saveCleaningRules(self, path: Union[str, None]):
+        """
+         Stores all loaded rules into json file to desired path, default as "cleaningrules.json".
+         """
+        if path is None:
+            path = "cleaningrules.json"
+        bigger_data_json = json.dumps(self.cleaningrules, default=pydantic_encoder)
+        print("Writing json to file:")
+        print(bigger_data_json)
+        f = open(path, "w")
+        f.write(bigger_data_json)
+
+    def cleanText(self, text: str) -> CleanResult:
         cleanedurls = []
         urls = URL_REGEX.findall(text)
         for url in urls:
@@ -64,14 +132,28 @@ class URLCleaner:
                 continue
             for cleaningrule in self.cleaningrules:
                 ruleApplicationStatus = self.cleanURL(cleanedurl, cleaningrule)
-                if ruleApplicationStatus is True and cleaningrule.forceStopAfterThisRule:
+                if ruleApplicationStatus is True and cleaningrule.stopAfterThisRule:
                     break
             cleanedurls.append(cleanedurl)
-        return cleanedurls
+        cleanedtext = text
+        for cleanedurl in cleanedurls:
+            cleanedtext = cleanedtext.replace(cleanedurl.originalurl, cleanedurl.cleanedurl.geturl())
+        result = CleanResult(text=text, cleanedtext=cleanedtext, cleanedurls=cleanedurls)
+        print(f"{cleanedtext=}")
+        return result
 
     def cleanURL(self, cleanedurl: CleanedURL, rule: CleaningRule) -> bool:
+        """ Check for exceptions by regex. """
+        if rule.urlPattern is not None:
+            if re.search(rule.urlPattern, cleanedurl.originalurl) is None:
+                # URL does not match pattern of this rule
+                return False
+        for exceptionregex in rule.exceptionsregexlist:
+            if re.search(exceptionregex, cleanedurl.originalurl):
+                return False
+
         if len(rule.domainwhitelist) > 0:
-            # Check if rulee-xecution is allowed by whitelist
+            # Check if rule-execution is allowed by whitelist if we got a whitelist
             domain = cleanedurl.cleanedurl.hostname
             if rule.domainwhitelistIgnoreWWW:
                 domain = domain.replace('www.', '')
@@ -79,9 +161,14 @@ class URLCleaner:
                 # Rule has domain-whitelist and domain of given URL is not on that whitelist so we cannot apply the rule.
                 return False
         appendedRule = False
-        regex = rule.rewriteURLSourcePattern.search(cleanedurl.originalurl) if rule.rewriteURLSourcePattern is not None else None
-        if regex:
+        newurl = None
+        newurl_regex = None
+        rewriteurlregex = rule.rewriteURLSourcePattern.search(cleanedurl.originalurl) if rule.rewriteURLSourcePattern is not None else None
+        if rewriteurlregex:
             newurl = rule.rewriteURLScheme
+            # if newurl is None:
+            #     # Default: Use first match
+            #     newurl = "<regexmatch:0>"
             matches = re.finditer(rule.rewriteURLSourcePattern, cleanedurl.originalurl)
             for match in matches:
                 for index in range(0, match.lastindex + 1):
@@ -90,6 +177,22 @@ class URLCleaner:
             randomletter = random.choice(string.ascii_lowercase)
             # Execute other replacements
             newurl = newurl.replace(f"<randomchar>", randomletter)
+            newurl_regex = str(rule.rewriteURLSourcePattern)
+            appendedRule = True
+        if len(rule.redirectsregexlist) is not None:
+            for pattern_str in rule.redirectsregexlist:
+                regex = re.search(pattern_str, cleanedurl.originalurl)
+                if regex:
+                    # Hit
+                    newurl = regex.group(1)
+                    newurl_regex = pattern_str
+                    appendedRule = True
+                    break
+        if newurl is not None:
+            # URL-decode result
+            newurl = unquote(newurl)
+            cleanedurl.newurl = newurl
+            cleanedurl.newurl_regex = newurl_regex
             if newurl != cleanedurl.originalurl:
                 try:
                     cleanedurl.cleanedurl = urlparse(newurl)
@@ -100,7 +203,6 @@ class URLCleaner:
                 # Rule created the same URL that put in -> Rule doesn't make any sense
                 # TODO: Use logging vs print statment
                 print(f"Possibly wrongly designed rule: '{rule.name}' returns unmodified URL for input {cleanedurl.originalurl}")
-            appendedRule = True
         # Collect parameters which should be removed
         removeParams = []
         if rule.removeAllParameters:
@@ -122,11 +224,20 @@ class URLCleaner:
             for removeparam in rule.paramsblacklist:
                 if cleanedurl.query.pop(removeparam, None) is not None:
                     removeParams.append(removeparam)
+        removedParams = []
+        # TODO: Add RegEx functionality for removing parameters
+        # Only remove affiliate related stuff if we are allowed to
+        if self.removeAffiliate and len(rule.paramsblacklist_affiliate) > 0:
+            for param_affiliate in rule.paramsblacklist_affiliate:
+                if cleanedurl.query.pop(param_affiliate, None) is not None:
+                    cleanedurl.removedparams_affiliate += param_affiliate
         if len(removeParams) > 0:
             for removeParam in removeParams:
-                cleanedurl.query.pop(removeParam)
-                cleanedurl.removedparams_tracking.append(removeParam)
-            # Replace query inside URL as we've changed the query
+                if cleanedurl.query.pop(removeParam) is not None:
+                    removedParams.append(removeParam)
+            cleanedurl.removedparams_tracking += removedParams
+        # Replace query inside URL as we've changed the query
+        if len(removedParams) > 0:
             cleanedurl.cleanedurl = cleanedurl.cleanedurl._replace(query=urlencode(cleanedurl.query, True))
             appendedRule = True
 
@@ -196,21 +307,18 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                      CleaningRule(name="Google Play Store", domainwhitelist=["store.google.com"], paramsblacklist=["selections"]),
                      # https://github.com/svenjacobs/leon/issues/358
                      CleaningRule(name="MyDealz Tracking Redirect Remover", rewriteURLSourcePattern=r"(?i)https?://([^/]+)/share-deal-from-app/(\d+)",
-                                  rewriteURLScheme="https://<regexmatch:1>/deals/<randomchar>-<regexmatch:2>")]
+                                  rewriteURLScheme="https://<regexmatch:1>/deals/<randomchar>-<regexmatch:2>", testurls=["https://mydealz.de/share-deal-from-app/2117879"])]
     return cleaningrules
 
 
 def main():
-    cleaningrules = getDefaultCleaningRules()
-    """ 
-     Save as json. This is just a test to demonstrate what is possible and that custom rules could easily be added and loaded via json file.
-     """
-    bigger_data_json = json.dumps(cleaningrules, default=pydantic_encoder)
-    print("Writing json to file:")
-    print(bigger_data_json)
-    f = open("cleaningrules.json", "w")
-    f.write(bigger_data_json)
-    f.close()
+    cleaner = URLCleaner()
+    cleaner.importCleaningRules("cleaningrules.json")
+    clearurlsaddon_rules_file = "data.minify.json"
+    if os.path.exists(clearurlsaddon_rules_file):
+        print("Test, importing rules from https://github.com/ClearURLs/Addon")
+        cleaner.importCleaningRules(clearurlsaddon_rules_file)
+    cleaner.saveCleaningRules("cleaningrules_save_test.json")
 
 
 if __name__ == '__main__':
