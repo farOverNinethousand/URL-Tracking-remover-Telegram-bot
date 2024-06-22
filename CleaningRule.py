@@ -17,6 +17,7 @@ class CleaningRule(BaseModel):
 
     rewriteURLSourcePattern: Regular expression to be used as source for building a new URL e.g. https://mydealz.de/share-deal-from-app/(\d+)
     rewriteURLScheme: Scheme to be used to URL-rewriting e.g. https://mydealz.de/deals/x-<regexmatch:1>
+    testurls: URLs for testing this rule
 
 
     Returns None.
@@ -30,6 +31,7 @@ class CleaningRule(BaseModel):
     forceStopAfterThisRule: Optional[bool] = False
     rewriteURLSourcePattern: Optional[Union[str, re.Pattern, None]]
     rewriteURLScheme: Optional[str]
+    testurls: Optional[List[str]]
 
     @validator("domainwhitelist")
     def verify_domainwhitelist(cls, value):

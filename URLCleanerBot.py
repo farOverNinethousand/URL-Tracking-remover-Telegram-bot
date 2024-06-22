@@ -104,8 +104,8 @@ class URLCleanerBot:
                     if index < len(cleanedurl.appliedrules) - 1:
                         appliedRulesText += ", "
                     index += 1
-                if len(cleanedurl.removedparams) > 0:
-                    removedParametersText = ", ".join(cleanedurl.removedparams)
+                if len(cleanedurl.removedparams_tracking) > 0:
+                    removedParametersText = ", ".join(cleanedurl.removedparams_tracking)
                 else:
                     removedParametersText = self.translate("text_none", user)
             else:

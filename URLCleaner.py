@@ -20,73 +20,8 @@ class CleanedURL:
         self.cleanedurl = urlparse(url)
         self.query = parse_qs(self.cleanedurl.query, keep_blank_values=True)
         self.appliedrules = []
-        self.removedparams = []
-
-
-def cleanURL(cleanedurl: CleanedURL, rule: CleaningRule) -> bool:
-    if len(rule.domainwhitelist) > 0:
-        # Check if rulee-xecution is allowed by whitelist
-        domain = cleanedurl.cleanedurl.hostname
-        if rule.domainwhitelistIgnoreWWW:
-            domain = domain.replace('www.', '')
-        if domain not in rule.domainwhitelist:
-            # Rule has domain-whitelist and domain of given URL is not on that whitelist so we cannot apply the rule.
-            return False
-    appendedRule = False
-    regex = rule.rewriteURLSourcePattern.search(cleanedurl.originalurl) if rule.rewriteURLSourcePattern is not None else None
-    if regex:
-        newurl = rule.rewriteURLScheme
-        matches = re.finditer(rule.rewriteURLSourcePattern, cleanedurl.originalurl)
-        for match in matches:
-            for index in range(0, match.lastindex + 1):
-                matchText = match.group(index)
-                newurl = newurl.replace(f"<regexmatch:{index}>", matchText)
-        randomletter = random.choice(string.ascii_lowercase)
-        # Execute other replacements
-        newurl = newurl.replace(f"<randomchar>", randomletter)
-        if newurl != cleanedurl.originalurl:
-            try:
-                cleanedurl.cleanedurl = urlparse(newurl)
-            except:
-                # This means tat whoever created that rule f*cked up
-                print(f"Warning: Rule '{rule.name}' would result in invalid URL -> {newurl}")
-        else:
-            # Rule created the same URL that put in -> Rule doesn't make any sense
-            # TODO: Use logging vs print statment
-            print(f"Possibly wrongly designed rule: '{rule.name}' returns unmodified URL for input {cleanedurl.originalurl}")
-        appendedRule = True
-    # Collect parameters which should be removed
-    removeParams = []
-    if rule.removeAllParameters:
-        # Remove all parameters from given URL RE: https://github.com/svenjacobs/leon/issues/70
-        for key in cleanedurl.query.keys():
-            removeParams.append(key)
-        # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
-        # cleanedurl.query = None
-        # appendedRule = True
-    elif rule.paramswhitelist is not None:
-        for key in cleanedurl.query.keys():
-            if key not in rule.paramswhitelist:
-                removeParams.append(key)
-        # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
-        # cleanedurl.query = None
-        # appendedRule = True
-    elif rule.paramsblacklist is not None:
-        # Remove parameters we don't want
-        for removeparam in rule.paramsblacklist:
-            if cleanedurl.query.pop(removeparam, None) is not None:
-                removeParams.append(removeparam)
-    if len(removeParams) > 0:
-        for removeParam in removeParams:
-            cleanedurl.query.pop(removeParam)
-            cleanedurl.removedparams.append(removeParam)
-        # Replace query inside URL as we've changed the query
-        cleanedurl.cleanedurl = cleanedurl.cleanedurl._replace(query=urlencode(cleanedurl.query, True))
-        appendedRule = True
-
-    if appendedRule:
-        cleanedurl.appliedrules.append(rule)
-    return appendedRule
+        self.removedparams_affiliate = []
+        self.removedparams_tracking = []
 
 
 # Very cheap regex to find URLs inside a text
@@ -108,6 +43,15 @@ class URLCleaner:
 
          """
         self.cleaningrules = getDefaultCleaningRules()
+        self.removeTracking = True
+        # TODO: Add functionality
+        self.removeAffiliate = False
+
+    def loadCleaningRules(self, path: str):
+        """ TODO: Add functionality
+         Load rules from file and add them to global list of cleaning rules.
+         """
+        pass
 
     def getCleanedURLs(self, text: str) -> List[CleanedURL]:
         cleanedurls = []
@@ -119,11 +63,76 @@ class URLCleaner:
                 # We are not validating those URLs before so errors during parsing may happen
                 continue
             for cleaningrule in self.cleaningrules:
-                ruleApplicationStatus = cleanURL(cleanedurl, cleaningrule)
+                ruleApplicationStatus = self.cleanURL(cleanedurl, cleaningrule)
                 if ruleApplicationStatus is True and cleaningrule.forceStopAfterThisRule:
                     break
             cleanedurls.append(cleanedurl)
         return cleanedurls
+
+    def cleanURL(self, cleanedurl: CleanedURL, rule: CleaningRule) -> bool:
+        if len(rule.domainwhitelist) > 0:
+            # Check if rulee-xecution is allowed by whitelist
+            domain = cleanedurl.cleanedurl.hostname
+            if rule.domainwhitelistIgnoreWWW:
+                domain = domain.replace('www.', '')
+            if domain not in rule.domainwhitelist:
+                # Rule has domain-whitelist and domain of given URL is not on that whitelist so we cannot apply the rule.
+                return False
+        appendedRule = False
+        regex = rule.rewriteURLSourcePattern.search(cleanedurl.originalurl) if rule.rewriteURLSourcePattern is not None else None
+        if regex:
+            newurl = rule.rewriteURLScheme
+            matches = re.finditer(rule.rewriteURLSourcePattern, cleanedurl.originalurl)
+            for match in matches:
+                for index in range(0, match.lastindex + 1):
+                    matchText = match.group(index)
+                    newurl = newurl.replace(f"<regexmatch:{index}>", matchText)
+            randomletter = random.choice(string.ascii_lowercase)
+            # Execute other replacements
+            newurl = newurl.replace(f"<randomchar>", randomletter)
+            if newurl != cleanedurl.originalurl:
+                try:
+                    cleanedurl.cleanedurl = urlparse(newurl)
+                except:
+                    # This means tat whoever created that rule f*cked up
+                    print(f"Warning: Rule '{rule.name}' would result in invalid URL -> {newurl}")
+            else:
+                # Rule created the same URL that put in -> Rule doesn't make any sense
+                # TODO: Use logging vs print statment
+                print(f"Possibly wrongly designed rule: '{rule.name}' returns unmodified URL for input {cleanedurl.originalurl}")
+            appendedRule = True
+        # Collect parameters which should be removed
+        removeParams = []
+        if rule.removeAllParameters:
+            # Remove all parameters from given URL RE: https://github.com/svenjacobs/leon/issues/70
+            for key in cleanedurl.query.keys():
+                removeParams.append(key)
+            # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
+            # cleanedurl.query = None
+            # appendedRule = True
+        elif rule.paramswhitelist is not None:
+            for key in cleanedurl.query.keys():
+                if key not in rule.paramswhitelist:
+                    removeParams.append(key)
+            # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
+            # cleanedurl.query = None
+            # appendedRule = True
+        elif rule.paramsblacklist is not None:
+            # Remove parameters we don't want
+            for removeparam in rule.paramsblacklist:
+                if cleanedurl.query.pop(removeparam, None) is not None:
+                    removeParams.append(removeparam)
+        if len(removeParams) > 0:
+            for removeParam in removeParams:
+                cleanedurl.query.pop(removeParam)
+                cleanedurl.removedparams_tracking.append(removeParam)
+            # Replace query inside URL as we've changed the query
+            cleanedurl.cleanedurl = cleanedurl.cleanedurl._replace(query=urlencode(cleanedurl.query, True))
+            appendedRule = True
+
+        if appendedRule:
+            cleanedurl.appliedrules.append(rule)
+        return appendedRule
 
 
 def getDefaultCleaningRules() -> List[CleaningRule]:
