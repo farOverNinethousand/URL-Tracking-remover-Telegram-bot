@@ -21,7 +21,6 @@ def loadConfig() -> Config:
         return Config(**jsondict)
 
 
-# TODO: Move translation int external (json) files
 langDE = dict(
     command_start_bot_info="Dieser Bot entfernt Trackingparameter von URLs.\nZusätzlich werden auch MyDealz Tracking-URLs abgeändert:\nBeispiel:\nmydealz.de/share-deal-from-app/2117879\n->Wird zu:\nmydealz.de/diskussion/a-2117879\nSende einen oder mehrere Links an diesen Bot und erhalte Links ohne Tracking.\nDieser Bot speichert keinerlei Daten.\nSource code and support: TODO",
     text_cleaned_urls_fail="❌Keine Links gefunden.",
@@ -76,7 +75,7 @@ class URLCleanerBot:
         self.application.add_handler(MessageHandler(filters=filters.TEXT and (~filters.COMMAND), callback=self.botCleanURLs))
 
     async def botDisplayMenuMain(self, update: Update, context: CallbackContext):
-        text = "<b>URLCleaner 0.2</b>"
+        text = "<b>URLCleaner 0.3</b>"
         text += f"\n{self.translate('command_start_bot_info', update.effective_user)}"
         return await self.application.updater.bot.send_message(chat_id=update.effective_user.id, text=text, parse_mode="HTML",
                                                                disable_web_page_preview=True)

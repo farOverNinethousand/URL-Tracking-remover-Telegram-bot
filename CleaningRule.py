@@ -63,6 +63,9 @@ class CleaningRule(BaseModel):
 
     @root_validator()
     def verify_rest(cls, values):
+        """
+         TODO: Add more checks e.g. check for rule with blacklist and whitelist params entries
+         """
         paramsblacklist = values.get('paramsblacklist')
         removeAllParameters = values.get('removeAllParameters')
         paramswhitelist = values.get('paramswhitelist')
