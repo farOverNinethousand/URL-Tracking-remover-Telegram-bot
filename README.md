@@ -7,7 +7,7 @@ The library which removes the tracking parameters can be used independently from
 
 **Bot description text:**  
 ```
-This bot removes tracking parameters from URLs.
+Removes tracking parameters from URLs.
 Source code: github.com/farOverNinethousand/URL-Tracking-remover-Telegram-bot
 Similar project for Android: github.com/svenjacobs/leon
 Similar project as browser addon: github.com/ClearURLs/Addon
@@ -22,6 +22,10 @@ help - Bot information
 # TODOs
 * Add all sanitizers of project "Leon": https://github.com/svenjacobs/leon/tree/main/core-domain/src/main/kotlin/com/svenjacobs/app/leon/core/domain/sanitizer
 * Add full support for all rules of project "ClearURLs": https://github.com/ClearURLs/Addon | https://docs.clearurls.xyz/1.26.1/specs/rules/
+
+# TODOs of ClearURLs rules which break certain stuff
+* https://github.com/ClearURLs/Rules/issues/113
+* 
 
 ## Similar projects:
 * https://github.com/svenjacobs/leon **⭐My personal favorite!⭐**

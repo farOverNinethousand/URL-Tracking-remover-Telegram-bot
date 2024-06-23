@@ -20,6 +20,7 @@ class CleanedURL:
         self.originalurl = url
         self.cleanedurl = urlparse(url)
         self.newurl_regex = None
+        self.newurl_urlparam = None
         self.newurl = None
         self.query = parse_qs(self.cleanedurl.query, keep_blank_values=True)
         self.appliedrules = []
@@ -79,20 +80,26 @@ class URLCleaner:
                 providers: dict = jsonobject.get("providers")
                 if providers is not None:
                     # rule json from ClearURLs addon: https://github.com/ClearURLs/Addon
-                    # TODO: Add parser for those rules
+                    # Docs: https://docs.clearurls.xyz/1.26.1/specs/rules/
+                    """ Some rules are blacklisted since their original is buggy or is lacking features.
+                     Example github.com: Original rule does not remove this parameter: notification_referrer_id, reference: https://github.com/ClearURLs/Rules/issues/114
+                     """
+                    blacklistedRules = ["github.com"]
                     for rulename, providermap in providers.items():
-                        # TODO: Add params RegEx support(?)
+                        if rulename in blacklistedRules:
+                            print(f"Skipping import of blacklisted rule: {rulename}")
+                            continue
                         paramlist = providermap.get("rules")
-                        # TODO
+                        # TODO: Migrate missing fields
                         completeProvider = providermap.get("completeProvider")
                         redirections = providermap.get("redirections")
                         rawRules = providermap.get("rawRules")
                         exceptions = providermap.get("exceptions")
-                        forceRedirection = providermap.get("forceRedirection")
                         referralMarketing = providermap.get("referralMarketing")
                         newrule = CleaningRule(name=rulename, description="Rule imported from 'github.com/ClearURLs/Addon'"
                                                , paramsblacklist=paramlist)
                         newrule.urlPattern = providermap["urlPattern"]
+                        newrule.forceRedirection = providermap.get("forceRedirection")
                         if exceptions is not None:
                             newrule.exceptionsregexlist = exceptions
                         if referralMarketing is not None:
@@ -132,6 +139,9 @@ class URLCleaner:
                 # We are not validating those URLs before so errors during parsing may happen
                 continue
             for cleaningrule in self.cleaningrules:
+                if cleaningrule.enabled is False:
+                    # Skip disabled rules
+                    continue
                 ruleApplicationStatus = self.cleanURL(cleanedurl, cleaningrule)
                 if cleanedurl.isException:
                     # Rule contained an exception regex so this URL shall not be changed.
@@ -154,7 +164,7 @@ class URLCleaner:
         for exceptionregex in rule.exceptionsregexlist:
             if re.search(exceptionregex, cleanedurl.originalurl):
                 cleanedurl.isException = True
-                return False
+                return True
 
         if len(rule.domainwhitelist) > 0:
             # Check if rule-execution is allowed by whitelist if we got a whitelist
@@ -167,6 +177,7 @@ class URLCleaner:
         appendedRule = False
         newurl = None
         newurl_regex = None
+        newurl_urlparam = None
         rewriteurlregex = rule.rewriteURLSourcePattern.search(cleanedurl.originalurl) if rule.rewriteURLSourcePattern is not None else None
         if rewriteurlregex:
             newurl = rule.rewriteURLScheme
@@ -192,11 +203,20 @@ class URLCleaner:
                     newurl_regex = pattern_str
                     appendedRule = True
                     break
+        if newurl is None and len(rule.redirectparameterlist) > 0:
+            for urlparam in rule.redirectparameterlist:
+                newurl = cleanedurl.query.get(urlparam)
+                if newurl is not None:
+                    newurl_urlparam = urlparam
+                    break
+
+
         if newurl is not None:
             # URL-decode result
             newurl = unquote(newurl)
             cleanedurl.newurl = newurl
             cleanedurl.newurl_regex = newurl_regex
+            cleanedurl.newurl_urlparam = newurl_urlparam
             if newurl != cleanedurl.originalurl:
                 try:
                     cleanedurl.cleanedurl = urlparse(newurl)
@@ -329,7 +349,29 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                      CleaningRule(name="MyDealz Tracking Redirect Remover",
                                   description="Changes such links: 'mydealz.de/share-deal-from-app/2117879' to such links: 'mydealz.de/deals/a-2117879'",
                                   rewriteURLSourcePattern=r"(?i)https?://([^/]+)/share-deal-from-app/(\d+)",
-                                  rewriteURLScheme="https://<regexmatch:1>/deals/<randomchar>-<regexmatch:2>", testurls=["https://mydealz.de/share-deal-from-app/2117879"])]
+                                  rewriteURLScheme="https://<regexmatch:1>/deals/<randomchar>-<regexmatch:2>", testurls=["https://mydealz.de/share-deal-from-app/2117879"]),
+                     CleaningRule(name="github.com",
+                                  description="Improved ClearURLs rule based on: https://github.com/ClearURLs/Rules/issues/114",
+                                  domainwhitelist=["github.com"], paramsblacklist=["email_token", "email_source", "notification_referrer_id"],
+                                  testurls=["https://github.com/mmikeww/AHK-v2-script-converter/pull/200?notification_referrer_id=NT_kwDOBQCiV7QxMTEzMTY3ODgwMjo4MzkyNzYzOQ#event-13195027062"]
+                                  ),
+                     CleaningRule(name="tvnet.lv",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/112",
+                                  domainwhitelist=["tvnet.lv"], paramsblacklist=["pnespid"],
+                                  testurls=["https://www.tvnet.lv/7966163/lusis-komente-kas-maskavas-ielai-kopigs-ar-krievu-karakugi?pnespid=WLAg5FBL9X9IyE6J7pPWSE1HvEk5nbwtul4QB.1dasnK8IUATWMh.omiCHhAMsUHGhQMTwHYlg"]),
+                     CleaningRule(name="komoot.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/111",
+                                  domainwhitelist=["komoot.com"], paramsblacklist=["share_token", "ref"],
+                                  testurls=["https://www.komoot.com/tour/1543654902?share_token=aVODnLAvDj1M0BWJrXN2zouh9HFGB6fAMGY4Xl5KsloLpTcrtp&ref=wtd"]),
+                     CleaningRule(name="1fichier.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/104",
+                                  domainwhitelist=["1fichier.com"], paramsblacklist_affiliate=["af"],
+                                  testurls=["https://1fichier.com/?j22232ehs40pki4x93wg&af=3787696"]),
+                     CleaningRule(name="douyu.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/98",
+                                  domainwhitelist=["douyu.com"], paramsblacklist=["dyshid", "dyshci"],
+                                  testurls=["https://www.douyu.com/11682346?dyshid=0-&dyshci=1"])
+                     ]
     return cleaningrules
 
 

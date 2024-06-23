@@ -22,6 +22,8 @@ class CleaningRule(BaseModel):
     rewriteURLSourcePattern: Regular expression to be used as source for building a new URL e.g. https://mydealz.de/share-deal-from-app/(\d+)
     rewriteURLScheme: Scheme to be used to URL-rewriting e.g. https://mydealz.de/deals/x-<regexmatch:1>
     forceRedirection: Not used at this moment, stolen/imported from ClearURLs project, see: https://docs.clearurls.xyz/1.26.1/specs/rules/#forceredirection
+    redirectsregexlist: List of regexes to find new URL inside existing URL. First match will be used.
+    redirectparameterlist: List of possible URL parameters to find new URL. First match will be used.
     testurls: URLs for testing this rule
 
 
@@ -29,6 +31,7 @@ class CleaningRule(BaseModel):
      """
     name: str
     description: Optional[str]
+    enabled: Optional[bool] = True
     urlPattern: Optional[str]
     paramsblacklist: Optional[List[str]]
     paramsblacklist_affiliate: Optional[List[str]]
@@ -37,6 +40,7 @@ class CleaningRule(BaseModel):
     domainwhitelistIgnoreWWW: Optional[bool] = True
     exceptionsregexlist: Optional[List[str]] = []
     redirectsregexlist: Optional[List[str]] = []
+    redirectparameterlist: Optional[List[str]] = []
     removeAllParameters: Optional[bool] = False
     stopAfterThisRule: Optional[bool] = True
     rewriteURLSourcePattern: Optional[Union[str, re.Pattern, None]]
