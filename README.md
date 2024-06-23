@@ -3,13 +3,14 @@
 This Telegram bot removes common URL tracking parameters from URLs you send it.
 The library which removes the tracking parameters can be used independently from the bot.
 
-# Live instance: TODO
+# Live instance: https://t.me/URLCleanerSanatizerBot
 
 **Bot description text:**  
 ```
 This bot removes tracking parameters from URLs.
-Source code and support: TODO
+Source code: github.com/farOverNinethousand/URL-Tracking-remover-Telegram-bot
 Similar project for Android: github.com/svenjacobs/leon
+Similar project as browser addon: github.com/ClearURLs/Addon
 ```
 
 **Bot commands text:**
