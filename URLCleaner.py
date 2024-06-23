@@ -143,6 +143,7 @@ class URLCleaner:
                     # Skip disabled rules
                     continue
                 ruleApplicationStatus = self.cleanURL(cleanedurl, cleaningrule)
+                # TODO: Do not stop on isException == True
                 if cleanedurl.isException:
                     # Rule contained an exception regex so this URL shall not be changed.
                     break
@@ -209,7 +210,6 @@ class URLCleaner:
                 if newurl is not None:
                     newurl_urlparam = urlparam
                     break
-
 
         if newurl is not None:
             # URL-decode result
@@ -353,12 +353,14 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                      CleaningRule(name="github.com",
                                   description="Improved ClearURLs rule based on: https://github.com/ClearURLs/Rules/issues/114",
                                   domainwhitelist=["github.com"], paramsblacklist=["email_token", "email_source", "notification_referrer_id"],
-                                  testurls=["https://github.com/mmikeww/AHK-v2-script-converter/pull/200?notification_referrer_id=NT_kwDOBQCiV7QxMTEzMTY3ODgwMjo4MzkyNzYzOQ#event-13195027062"]
+                                  testurls=[
+                                      "https://github.com/mmikeww/AHK-v2-script-converter/pull/200?notification_referrer_id=NT_kwDOBQCiV7QxMTEzMTY3ODgwMjo4MzkyNzYzOQ#event-13195027062"]
                                   ),
                      CleaningRule(name="tvnet.lv",
                                   description="Idea from: https://github.com/ClearURLs/Rules/issues/112",
                                   domainwhitelist=["tvnet.lv"], paramsblacklist=["pnespid"],
-                                  testurls=["https://www.tvnet.lv/7966163/lusis-komente-kas-maskavas-ielai-kopigs-ar-krievu-karakugi?pnespid=WLAg5FBL9X9IyE6J7pPWSE1HvEk5nbwtul4QB.1dasnK8IUATWMh.omiCHhAMsUHGhQMTwHYlg"]),
+                                  testurls=[
+                                      "https://www.tvnet.lv/7966163/lusis-komente-kas-maskavas-ielai-kopigs-ar-krievu-karakugi?pnespid=WLAg5FBL9X9IyE6J7pPWSE1HvEk5nbwtul4QB.1dasnK8IUATWMh.omiCHhAMsUHGhQMTwHYlg"]),
                      CleaningRule(name="komoot.com",
                                   description="Idea from: https://github.com/ClearURLs/Rules/issues/111",
                                   domainwhitelist=["komoot.com"], paramsblacklist=["share_token", "ref"],
