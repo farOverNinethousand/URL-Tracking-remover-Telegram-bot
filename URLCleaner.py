@@ -143,11 +143,7 @@ class URLCleaner:
                     # Skip disabled rules
                     continue
                 ruleApplicationStatus = self.cleanURL(cleanedurl, cleaningrule)
-                # TODO: Do not stop on isException == True
-                if cleanedurl.isException:
-                    # Rule contained an exception regex so this URL shall not be changed.
-                    break
-                elif ruleApplicationStatus is True and cleaningrule.stopAfterThisRule:
+                if ruleApplicationStatus is True and cleaningrule.stopAfterThisRule:
                     break
             cleanedurls.append(cleanedurl)
         cleanedtext = text
@@ -213,20 +209,22 @@ class URLCleaner:
 
         if newurl is not None:
             # URL-decode result
-            newurl = unquote(newurl)
+            if '%' in newurl:
+                newurl = unquote(newurl)
             cleanedurl.newurl = newurl
             cleanedurl.newurl_regex = newurl_regex
             cleanedurl.newurl_urlparam = newurl_urlparam
             if newurl != cleanedurl.originalurl:
                 try:
                     cleanedurl.cleanedurl = urlparse(newurl)
-                except:
+                except Exception as error:
                     # This means tat whoever created that rule f*cked up
                     print(f"Warning: Rule '{rule.name}' would result in invalid URL -> {newurl}")
             else:
                 # Rule created the same URL that put in -> Rule doesn't make any sense
                 # TODO: Use logging vs print statment
                 print(f"Possibly wrongly designed rule: '{rule.name}' returns unmodified URL for input {cleanedurl.originalurl}")
+            appendedRule = True
         # Collect tracking parameters which should be removed
         removeParamsTracking = []
         if rule.removeAllParameters:
@@ -287,26 +285,29 @@ class URLCleaner:
 
 
 def getDefaultCleaningRules() -> List[CleaningRule]:
+    """ TODOs:
+      - Amazon: Think about how to make it possible to let a rule "remove all parameters" but keep affiliate related parameters RE: https://github.com/ClearURLs/Rules/issues/94
+      """
     cleaningrules = [CleaningRule(name="Google's Urchin Tracking Module",
                                   paramsblacklist=["_ga", "utm_id", "utm_source", "utm_medium", "utm_term", "utm_campaign", "utm_content", "utm_name", "utm_cid",
                                                    "utm_reader", "utm_viz_id",
                                                    "utm_pubreferrer", "utm_swu", "_ga", "gclsrc", "dclid", "adposition", "campaignid", "adgroupid", "feeditemid",
                                                    "targetid"], stopAfterThisRule=False),
-                     CleaningRule(name="Google Click Identifier", paramsblacklist=["gclid"]),
+                     CleaningRule(name="Google Click Identifier", paramsblacklist=["gclid"], stopAfterThisRule=False),
                      CleaningRule(name="Adobe Omniture SiteCatalyst", paramsblacklist=["IC_ID"]),
                      CleaningRule(name="Adobe misc", paramsblacklist=["s_cid", "s_kwcid"]),
                      CleaningRule(name="Hubspot",
                                   paramsblacklist=["_hs_enc", "_hs_mi", "hsa_cam", "hsa_grp", "hsa_mt", "hsa_src", "hsa_ad", "hsa_acc", "hsa_net", "hsa_cam", "hsa_grp",
-                                                   "hsa_mt", "hsa_src", "hsa_ad", "hsa_acc", "hsa_net", "hsa_kw", "hsa_tgt", "hsa_ver"]),
+                                                   "hsa_mt", "hsa_src", "hsa_ad", "hsa_acc", "hsa_net", "hsa_kw", "hsa_tgt", "hsa_ver"], stopAfterThisRule=False),
                      CleaningRule(name="Marketo", paramsblacklist=["mkt_tok"]),
                      # https://mailchimp.com/developer/marketing/docs/e-commerce/
                      CleaningRule(name="MailChimp", paramsblacklist=["mc_cid", "mc_eid"]),
                      CleaningRule(name="SimpleReach", paramsblacklist=["sr_share"]),
                      CleaningRule(name="Vero", paramsblacklist=["vero_conv", "vero_id"]),
-                     CleaningRule(name="Spotify/YouTube Share Identifier", paramsblacklist=["si"]),
+                     CleaningRule(name="Spotify/YouTube Share Identifier", paramsblacklist=["si"], stopAfterThisRule=False),
                      CleaningRule(name="Facebook Click Identifier", paramsblacklist=["fbclid"]),
-                     CleaningRule(name="Instagram Share Identifier", paramsblacklist=["igsh", "igshid", "srcid"]),
-                     CleaningRule(name="Some other Google Click thing", paramsblacklist=["ocid"]),
+                     CleaningRule(name="Instagram Share Identifier", paramsblacklist=["igsh", "igshid", "srcid"], stopAfterThisRule=False),
+                     CleaningRule(name="Some other Google Click thing", paramsblacklist=["ocid"], stopAfterThisRule=False),
                      CleaningRule(name="Alibaba-family 'super position model' tracker",
                                   description="Requested by a user here: https://github.com/newhouse/url-tracking-stripper/issues/38",
                                   paramsblacklist=["spm"]),
@@ -325,11 +326,12 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                                                    "ebay.cn", "ebay.com.tw", "ebay.co.jp", "ebaythailand.co.th", "cpass.ebay.com"],
                                   paramswhitelist=["_nkw", "s", "q", "catid"]),
                      # Source: https://gist.github.com/AminulBD/8c347539ecd49a8ab0b24544dd2ebab1
+
                      CleaningRule(name="Amazon remove all parameters test",
                                   description="Removes all parameters from any amazon URLs since usually people are sending roduct URLs where only the product-ID matters and that is part of the path and not a parameter.",
                                   domainwhitelist=["amazon.com", "amazon.co.uk", "amazon.ca", "amazon.de", "amazon.es""amazon.fr", "amazon.it", "amazon.co.jp",
                                                    "amazon.in", "amazon.cn", "amazon.com.sg", "amazon.com.mx", "amazon.ae", "amazon.com.br", "amazon.nl", "amazon.com.au",
-                                                   "amazon.com.tr", "amazon.sa", "amazon.se", "amazon.pl"], removeAllParameters=True),
+                                                   "amazon.com.tr", "amazon.sa", "amazon.se", "amazon.pl"], paramsblacklist_affiliate=["tag", "ascsubtag"], removeAllParameters=True),
                      CleaningRule(name="fastcompany.com remove all parameters test",
                                   domainwhitelist=["fastcompany.com"], removeAllParameters=True),
                      CleaningRule(name="flipkart.com remove all parameters test",
@@ -372,7 +374,20 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                      CleaningRule(name="douyu.com",
                                   description="Idea from: https://github.com/ClearURLs/Rules/issues/98",
                                   domainwhitelist=["douyu.com"], paramsblacklist=["dyshid", "dyshci"],
-                                  testurls=["https://www.douyu.com/11682346?dyshid=0-&dyshci=1"])
+                                  testurls=["https://www.douyu.com/11682346?dyshid=0-&dyshci=1"]),
+                     CleaningRule(name="google.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/85",
+                                  domainwhitelist=["google.com"], paramsblacklist=["sca_esv", "oe"],
+                                  testurls=["https://www.google.com/search?q=test&sca_esv=XXXXXXXXX"]),
+                     CleaningRule(name="bloomberg.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/84",
+                                  domainwhitelist=["bloomberg.com"], paramsblacklist=["leadSource"],
+                                  testurls=["https://www.bloomberg.com/opinion/articles/2023-07-10/erdogan-s-nato-sweden-blackmail-dooms-turkey-s-eu-membership?leadSource=reddit_wall"]),
+                     CleaningRule(name="redirect.viglink.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/82",
+                                  domainwhitelist=["redirect.viglink.com"], redirectparameterlist=["u"],
+                                  testurls=["https://redirect.viglink.com/?key=e7eab128eb8d1c53e14db14f4c632447&u=https%3A%2F%2Fwww.amd.com%2Fen%2Ftechnologies%2Ffreesync-hdr-games&cuid=xid%3Afr1686664229aaa"]),
+                     CleaningRule(name="news.yahoo.com", description="Idea from: https://github.com/ClearURLs/Rules/issues/73", domainwhitelist=["news.yahoo.com"], removeAllParameters=True),
                      ]
     return cleaningrules
 
