@@ -238,6 +238,7 @@ class URLCleaner:
             # Collect tracking parameters which should be removed
             removeParamsTracking = []
             if rule.removeAllParameters:
+                # TODO: Add performance optimization for this e.g. remove by substring lastindexof('?')
                 # Remove all parameters from given URL RE: https://github.com/svenjacobs/leon/issues/70
                 for key in cleanedurl.query.keys():
                     removeParamsTracking.append(key)
