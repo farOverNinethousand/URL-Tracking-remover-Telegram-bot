@@ -34,10 +34,12 @@ class CleaningRule(BaseModel):
     enabled: Optional[bool] = True
     urlPattern: Optional[str]
     paramsblacklist: Optional[List[str]]
+    paramsblacklist_regex: Optional[List[str]]
     paramsblacklist_affiliate: Optional[List[str]]
     paramswhitelist: Optional[List[str]]
     domainwhitelist: Optional[List[str]] = []
     domainwhitelistIgnoreWWW: Optional[bool] = True
+    domainwhitelistIgnoreSubdomains: Optional[bool] = True
     exceptionsregexlist: Optional[List[str]] = []
     redirectsregexlist: Optional[List[str]] = []
     redirectparameterlist: Optional[List[str]] = []
@@ -71,13 +73,15 @@ class CleaningRule(BaseModel):
          TODO: Add more checks e.g. check for rule with blacklist and whitelist params entries
          """
         paramsblacklist = values.get('paramsblacklist')
+        paramsblacklist_regex = values.get('paramsblacklist_regex')
+        paramsblacklist_affiliate = values.get('paramsblacklist_affiliate')
         removeAllParameters = values.get('removeAllParameters')
         paramswhitelist = values.get('paramswhitelist')
         rewriteURLSourcePattern = values.get('rewriteURLSourcePattern')
         rewriteURLScheme = values.get('rewriteURLScheme')
         urlPattern = values.get('urlPattern')
         redirectsregexlist = values.get('redirectsregexlist')
-        if paramsblacklist is None and removeAllParameters is False and paramswhitelist is None and rewriteURLSourcePattern is None and rewriteURLScheme is None and urlPattern is None and redirectsregexlist is None:
+        if paramsblacklist and paramsblacklist_regex is None and paramsblacklist_affiliate is None and removeAllParameters is False and paramswhitelist is None and rewriteURLSourcePattern is None and rewriteURLScheme is None and urlPattern is None and redirectsregexlist is None:
             raise ValueError(f"Minumum parameters are not given | {paramsblacklist=} {removeAllParameters=} {rewriteURLSourcePattern=} {rewriteURLScheme=}")
         elif rewriteURLSourcePattern is None and rewriteURLScheme is not None:
             raise ValueError(f"{rewriteURLSourcePattern=} while rewriteURLScheme is not None")

@@ -34,6 +34,7 @@ help - Bot information
 * https://github.com/newhouse/url-tracking-stripper
 * https://github.com/doggy8088/TrackingTokenStripper
 * https://github.com/agneevX/url-cleaner-bot
+* https://github.com/collinbarrett/FilterLists
 
 
 ## Links:

@@ -84,20 +84,20 @@ class URLCleaner:
                     """ Some rules are blacklisted since their original is buggy or is lacking features.
                      Example github.com: Original rule does not remove this parameter: notification_referrer_id, reference: https://github.com/ClearURLs/Rules/issues/114
                      """
-                    blacklistedRules = ["github.com"]
+                    blacklistedRules = ["github.com", "techcrunch"]
                     for rulename, providermap in providers.items():
                         if rulename in blacklistedRules:
-                            print(f"Skipping import of blacklisted rule: {rulename}")
+                            print(f"Skipping ClearURLs import of blacklisted rule: {rulename}")
                             continue
-                        paramlist = providermap.get("rules")
+                        paramsblacklist_regex = providermap.get("rules")
                         # TODO: Migrate missing fields
                         completeProvider = providermap.get("completeProvider")
                         redirections = providermap.get("redirections")
                         rawRules = providermap.get("rawRules")
                         exceptions = providermap.get("exceptions")
                         referralMarketing = providermap.get("referralMarketing")
-                        newrule = CleaningRule(name=rulename, description="Rule imported from 'github.com/ClearURLs/Addon'"
-                                               , paramsblacklist=paramlist)
+                        newrule = CleaningRule(name=rulename, description="Rule imported from 'github.com/ClearURLs/Addon'",
+                                               paramsblacklist_regex=paramsblacklist_regex)
                         newrule.urlPattern = providermap["urlPattern"]
                         newrule.forceRedirection = providermap.get("forceRedirection")
                         if exceptions is not None:
@@ -161,17 +161,26 @@ class URLCleaner:
         for exceptionregex in rule.exceptionsregexlist:
             if re.search(exceptionregex, cleanedurl.originalurl):
                 cleanedurl.isException = True
-                return True
+                return False
 
         if len(rule.domainwhitelist) > 0:
             # Check if rule-execution is allowed by whitelist if we got a whitelist
             domain = cleanedurl.cleanedurl.hostname
-            if rule.domainwhitelistIgnoreWWW:
-                domain = domain.replace('www.', '')
-            if domain not in rule.domainwhitelist:
-                # Rule has domain-whitelist and domain of given URL is not on that whitelist so we cannot apply the rule.
-                return False
-        appendedRule = False
+            if rule.domainwhitelistIgnoreSubdomains:
+                domainAllowed = False
+                for whitelisteddomain in rule.domainwhitelist:
+                    if domain.endswith(whitelisteddomain):
+                        domainAllowed = True
+                        break
+                if not domainAllowed:
+                    return False
+            else:
+                domainToCompare = domain
+                if rule.domainwhitelistIgnoreWWW:
+                    domainToCompare = domain.replace('www.', '')
+                if domainToCompare not in rule.domainwhitelist:
+                    # Rule has domain-whitelist and domain of given URL is not on that whitelist so we cannot apply the rule.
+                    return False
         newurl = None
         newurl_regex = None
         newurl_urlparam = None
@@ -190,7 +199,6 @@ class URLCleaner:
             # Execute other replacements
             newurl = newurl.replace(f"<randomchar>", randomletter)
             newurl_regex = str(rule.rewriteURLSourcePattern)
-            appendedRule = True
         if len(rule.redirectsregexlist) is not None:
             for pattern_str in rule.redirectsregexlist:
                 regex = re.search(pattern_str, cleanedurl.originalurl)
@@ -198,7 +206,6 @@ class URLCleaner:
                     # Hit
                     newurl = regex.group(1)
                     newurl_regex = pattern_str
-                    appendedRule = True
                     break
         if newurl is None and len(rule.redirectparameterlist) > 0:
             for urlparam in rule.redirectparameterlist:
@@ -207,7 +214,9 @@ class URLCleaner:
                     newurl_urlparam = urlparam
                     break
 
+        appendedRule = False
         if newurl is not None:
+            # New URL was found -> Return that
             # URL-decode result
             if '%' in newurl:
                 newurl = unquote(newurl)
@@ -223,54 +232,54 @@ class URLCleaner:
             else:
                 # Rule created the same URL that put in -> Rule doesn't make any sense
                 # TODO: Use logging vs print statment
-                print(f"Possibly wrongly designed rule: '{rule.name}' returns unmodified URL for input {cleanedurl.originalurl}")
+                print(f"Wrongly designed rule or coincidence? New and old URL are the same: {cleanedurl.originalurl}")
             appendedRule = True
-        # Collect tracking parameters which should be removed
-        removeParamsTracking = []
-        if rule.removeAllParameters:
-            # Remove all parameters from given URL RE: https://github.com/svenjacobs/leon/issues/70
-            for key in cleanedurl.query.keys():
-                removeParamsTracking.append(key)
-            # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
-            # cleanedurl.query = None
-            # appendedRule = True
-        elif rule.paramswhitelist is not None:
-            for key in cleanedurl.query.keys():
-                if key not in rule.paramswhitelist:
+        else:
+            # Collect tracking parameters which should be removed
+            removeParamsTracking = []
+            if rule.removeAllParameters:
+                # Remove all parameters from given URL RE: https://github.com/svenjacobs/leon/issues/70
+                for key in cleanedurl.query.keys():
                     removeParamsTracking.append(key)
-            # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
-            # cleanedurl.query = None
-            # appendedRule = True
-        elif rule.paramsblacklist is not None:
-            removeParamsTracking = rule.paramsblacklist
-        removedParams = []
-        # Only remove affiliate related stuff if we are allowed to
-        if self.removeAffiliate and len(rule.paramsblacklist_affiliate) > 0:
-            removedParamsAffiliate = self.removeUrlParameters(cleanedurl, rule.paramsblacklist_affiliate)
-            removedParams += removedParamsAffiliate
-            cleanedurl.removedparams_affiliate += removedParamsAffiliate
-        if len(removeParamsTracking) > 0:
-            removedParamsTracking = self.removeUrlParameters(cleanedurl, removeParamsTracking)
-            removedParams += removedParamsTracking
-            cleanedurl.removedparams_tracking += removedParamsTracking
-        # Replace query inside URL as we've changed the query
-        if len(removedParams) > 0:
-            cleanedurl.cleanedurl = cleanedurl.cleanedurl._replace(query=urlencode(cleanedurl.query, True))
-            appendedRule = True
+                # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
+                # cleanedurl.query = None
+            elif rule.paramswhitelist is not None:
+                for key in cleanedurl.query.keys():
+                    if key not in rule.paramswhitelist:
+                        removeParamsTracking.append(key)
+                # cleanedurl.parsedURL = cleanedurl.parsedURL._replace(query=None)
+                # cleanedurl.query = None
+            elif rule.paramsblacklist is not None:
+                removeParamsTracking = rule.paramsblacklist
+            removedParams = []
+            # Only remove affiliate related stuff if we are allowed to
+            if self.removeAffiliate and len(rule.paramsblacklist_affiliate) > 0:
+                removedParamsAffiliate = self.removeUrlParameters(cleanedurl, rule.paramsblacklist_affiliate, None)
+                removedParams += removedParamsAffiliate
+                cleanedurl.removedparams_affiliate += removedParamsAffiliate
+            if len(removeParamsTracking) > 0 or (rule.paramsblacklist_regex is not None and len(rule.paramsblacklist_regex) > 0):
+                removedParamsTracking = self.removeUrlParameters(cleanedurl, removeParamsTracking, rule.paramsblacklist_regex)
+                removedParams += removedParamsTracking
+                cleanedurl.removedparams_tracking += removedParamsTracking
+            # Replace query inside URL as we've changed the query
+            if len(removedParams) > 0:
+                cleanedurl.cleanedurl = cleanedurl.cleanedurl._replace(query=urlencode(cleanedurl.query, True))
+                appendedRule = True
 
         if appendedRule:
             cleanedurl.appliedrules.append(rule)
         return appendedRule
 
-    def removeUrlParameters(self, cleanedurl: CleanedURL, paramsToRemove):
+    def removeUrlParameters(self, cleanedurl: CleanedURL, paramsblacklist: Union[list, None], paramsblacklistRegex: Union[list, None]):
+        if paramsblacklist is None:
+            paramsblacklist = []
+        if paramsblacklistRegex is None:
+            paramsblacklistRegex = []
         removedParams = []
-        paramsRegex = []
-        for param in paramsToRemove:
+        for param in paramsblacklist:
             if cleanedurl.query.pop(param, None) is not None:
                 removedParams.append(param)
-            else:
-                paramsRegex.append(param)
-        for paramRegex in paramsRegex:
+        for paramRegex in paramsblacklistRegex:
             # Remove parameters via regular expression
             for paramkey in list(cleanedurl.query.keys()):
                 try:
@@ -304,7 +313,7 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                      CleaningRule(name="MailChimp", paramsblacklist=["mc_cid", "mc_eid"]),
                      CleaningRule(name="SimpleReach", paramsblacklist=["sr_share"]),
                      CleaningRule(name="Vero", paramsblacklist=["vero_conv", "vero_id"]),
-                     CleaningRule(name="Spotify/YouTube Share Identifier", paramsblacklist=["si"], stopAfterThisRule=False),
+                     CleaningRule(name="Spotify/YouTube Share Identifier", paramsblacklist=["si", "pp"], stopAfterThisRule=False),
                      CleaningRule(name="Facebook Click Identifier", paramsblacklist=["fbclid"]),
                      CleaningRule(name="Instagram Share Identifier", paramsblacklist=["igsh", "igshid", "srcid"], stopAfterThisRule=False),
                      CleaningRule(name="Some other Google Click thing", paramsblacklist=["ocid"], stopAfterThisRule=False),
@@ -388,6 +397,12 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                                   domainwhitelist=["redirect.viglink.com"], redirectparameterlist=["u"],
                                   testurls=["https://redirect.viglink.com/?key=e7eab128eb8d1c53e14db14f4c632447&u=https%3A%2F%2Fwww.amd.com%2Fen%2Ftechnologies%2Ffreesync-hdr-games&cuid=xid%3Afr1686664229aaa"]),
                      CleaningRule(name="news.yahoo.com", description="Idea from: https://github.com/ClearURLs/Rules/issues/73", domainwhitelist=["news.yahoo.com"], removeAllParameters=True),
+                     CleaningRule(name="Bandcamp.com remove all parameters",
+                                  description="Removes all parameters from any bandcamp.com URL since they contain all relevant information inside the path.",
+                                  domainwhitelist=["bandcamp.com"], domainwhitelistIgnoreSubdomains=True, removeAllParameters=True),
+                     CleaningRule(name="techcrunch.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/22",
+                                  domainwhitelist=["techcrunch.com"], domainwhitelistIgnoreSubdomains=True, removeAllParameters=True)
                      ]
     return cleaningrules
 
