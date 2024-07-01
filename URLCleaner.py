@@ -362,6 +362,10 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                                   description="Changes such links: 'mydealz.de/share-deal-from-app/2117879' to such links: 'mydealz.de/deals/a-2117879'",
                                   rewriteURLSourcePattern=r"(?i)https?://([^/]+)/share-deal-from-app/(\d+)",
                                   rewriteURLScheme="https://<regexmatch:1>/deals/<randomchar>-<regexmatch:2>", testurls=["https://mydealz.de/share-deal-from-app/2117879"]),
+                     # https://github.com/svenjacobs/leon/issues/358
+                     CleaningRule(name="MyDealz.de Tracking Parameter Remover",
+                                  description="Removes tracking parameters from MyDealz.de links",
+                                  domainwhitelist=["mydealz.de"], paramsblacklist=["pprmrkntfctnsrd", "UATypeId"], testurls=["https://www.mydealz.de/diskussion/gratis-adidas-fussball-trikot-2383743?pprmrkntfctnsrd=123456789&UATypeId=18"]),
                      CleaningRule(name="github.com",
                                   description="Improved ClearURLs rule based on: https://github.com/ClearURLs/Rules/issues/114",
                                   domainwhitelist=["github.com"], paramsblacklist=["email_token", "email_source", "notification_referrer_id"],
