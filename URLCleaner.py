@@ -407,7 +407,11 @@ def getDefaultCleaningRules() -> List[CleaningRule]:
                                   domainwhitelist=["bandcamp.com"], domainwhitelistIgnoreSubdomains=True, removeAllParameters=True),
                      CleaningRule(name="techcrunch.com",
                                   description="Idea from: https://github.com/ClearURLs/Rules/issues/22",
-                                  domainwhitelist=["techcrunch.com"], domainwhitelistIgnoreSubdomains=True, removeAllParameters=True)
+                                  domainwhitelist=["techcrunch.com"], domainwhitelistIgnoreSubdomains=True, removeAllParameters=True),
+                     CleaningRule(name="aliexpress.com",
+                                  description="Idea from: https://github.com/ClearURLs/Rules/issues/17",
+                                  urlPattern="https?://www\\.aliexpress\\.com/item/[0-9]+\\.html.+", removeAllParameters=True,
+                                  testurls=["https://www.aliexpress.com/item/1005001472307338.html?algo_exp_id=b13fd996-02c2-4b2c-94c9-26ec25eb7f8d-2&pdp_ext_f=%7B%22sku_id%22%3A%2212000016265829061%22%7D&pdp_pi=-1%3B13.8%3B-1%3B2.35%40salePrice%3BEUR%3Bsearch-mainSearch"])
                      ]
     return cleaningrules
 
